@@ -163,7 +163,11 @@ scriptline *next_scriptline( scriptfile *sf )
 	return line;
 }
 
-scriptfile *loadScript(const char *fn)
+scriptfile *loadScriptFile(const char *fn)
+{
+	return loadScript( readwholefile(fn) );
+}
+scriptfile *loadScript(const char *source)
 {
 	scriptfile *script = (scriptfile*)malloc(sizeof(scriptfile));
 	scriptsegment *seg = NULL;
@@ -177,9 +181,9 @@ scriptfile *loadScript(const char *fn)
 	bool notComment=false;
 	char *strline;
 
-	script->source = readwholefile(fn);
+	script->source = source;
 	if( !script->source ) {
-		fprintf(stderr, "Problem reading %s (scriptfile).", fn);
+		fprintf(stderr, "Problem reading script.");
 		return NULL;
 	}
 	script->line_repeats = 3;
@@ -198,7 +202,7 @@ scriptfile *loadScript(const char *fn)
 		if( !*strline ) {
 			if( script->segments->count == 0 ) {
 				script->segments->PushBack(seg);
-				printf("Script '%s': [%d][%d]\n", seg->comment, script->segment_repeats, script->line_repeats);
+				//printf("Script '%s': [%d][%d]\n", seg->comment, script->segment_repeats, script->line_repeats);
 				seg = new_segment(script);
 			}
 			continue;
@@ -213,7 +217,7 @@ scriptfile *loadScript(const char *fn)
 				// next segment
 				seg->current = seg->lines->nodes;
 				script->segments->PushBack(seg);
-				printf("Segment '%s': [%d][%d]\n", seg->comment, seg->segment_repeats, seg->line_repeats);
+				//printf("Segment '%s': [%d][%d]\n", seg->comment, seg->segment_repeats, seg->line_repeats);
 				seg = new_segment(script);
 			}
 
@@ -223,7 +227,7 @@ scriptfile *loadScript(const char *fn)
 				scrres->source = strdup( (char*)config->FindData(0) );
 				scrres->response = strdup( (char*)config->FindData(1) );
 				line->responses->PushBack(scrres);
-				printf("Scanned #response linecode '%s': %s.\n", scrres->source, scrres->response);
+				//printf("Scanned #response linecode '%s': %s.\n", scrres->source, scrres->response);
 			} else if( line && str_cn_cmp(strline, "#scan") == 0 ) {
 				config = split(strline+5, "=");
 				scrscan = (scriptscan*)malloc(sizeof(scriptscan));
@@ -232,16 +236,16 @@ scriptfile *loadScript(const char *fn)
 				scrscan->endstr = NULL;
 				scrscan->offset = 0;
 				line->scans->PushBack(scrscan);
-				printf("Scanned #scan linecode '%s': %s.\n", scrscan->source, scrscan->saveas);
-			} else if( line && str_cn_cmp(strline, "#scan2") == 0 ) {
-				config = split(strline+5, "=");
+				//printf("Scanned #scan linecode '%s': %s.\n", scrscan->source, scrscan->saveas);
+			} else if( line && str_cn_cmp(strline, "#bscan") == 0 ) {
+				config = split(strline+6, "=");
 				scrscan = (scriptscan*)malloc(sizeof(scriptscan));
 				scrscan->source = strdup( (char*)config->FindData(0) );
 				scrscan->saveas = strdup( (char*)config->FindData(1) );
 				scrscan->endstr = strdup("eof");
 				scrscan->offset = 0;
 				line->scans->PushBack(scrscan);
-				printf("Scanned #scan linecode '%s': %s.\n", scrscan->source, scrscan->saveas);
+				//printf("Scanned #bscan linecode '%s': %s.\n", scrscan->source, scrscan->saveas);
 			} else if( str_cn_cmp(strline, "#segment-repeat") == 0 ) {
 				strip_spaces(strline);
 				config = split(strline, "=");
@@ -292,7 +296,7 @@ scriptfile *loadScript(const char *fn)
 
 	if( seg ) {
 		seg->current = seg->lines->nodes;
-		printf("Segment '%s': [%d][%d]\n", seg->comment, seg->segment_repeats, seg->line_repeats);
+		//printf("Segment '%s': [%d][%d]\n", seg->comment, seg->segment_repeats, seg->line_repeats);
 		script->segments->PushBack(seg);
 	}
 

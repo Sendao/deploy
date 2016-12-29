@@ -440,7 +440,7 @@ void Pipe::getcommandprompt( void )
 	readbuffer->clear();
 
 	// trigger a commandline prompt to be displayed
-	printf("\ngetcommandprompt()\n");
+	//printf("\ngetcommandprompt()\n");
 	if( this->cmdprompt ) {
 		free(this->cmdprompt);
 		this->cmdprompt = NULL;

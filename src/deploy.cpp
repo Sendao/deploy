@@ -38,8 +38,8 @@ Pipe *pipeConnection( void )
 
 	p->breakTest = pipeTest;
 
-	//p->write_to_stdout = false;
-	//p->read_from_stdin = false;
+	p->write_to_stdout = false;
+	p->read_from_stdin = false;
 
 	return p;
 }
@@ -48,7 +48,7 @@ char *strPrint( const char *pattern )
 {
 	stringbuf *sp = new stringbuf;
 	const char *p, *stringvar;
-	char *strname;
+	char *strname, *tmpbuf;
 
 	for( p = pattern; *p; p++ ) {
 		if( *p == '\\' ) {
@@ -86,7 +86,13 @@ char *strPrint( const char *pattern )
 			strncpy(strname, stringvar, p-stringvar);
 			strname[ p-stringvar ] = '\0';
 
-			sp->append( (char*)scanned_vars->Get(strname) );
+			tmpbuf = (char*)scanned_vars->Get(strname);
+			if( tmpbuf ) {
+				//printf("Add var '%s' of '%s'\n", tmpbuf, strname);
+				sp->append( tmpbuf );
+			} else {
+				printf("Var not found '%s'\n", strname);
+			}
 			free(strname);
 			continue;
 		}
@@ -94,7 +100,7 @@ char *strPrint( const char *pattern )
 	}
 	strname = strdup(sp->p);
 	delete sp;
-	printf("Translate '%s': '%s'\n", pattern, strname);
+	//printf("Translate '%s': '%s'\n", pattern, strname);
 
 	return strname;
 }
@@ -105,7 +111,7 @@ void pipeReadHandler( Pipe *p, char *buf )
 	tnode *n, *n2;
 	scriptsegment *seg;
 	scriptline *line;
-	scriptscan *scan;
+	scriptscan *scan, *readingto=NULL;
 	scriptresponse *resp;
 	char *line_input, *line_lower, *strptr, *strbuf;
 
@@ -115,7 +121,7 @@ void pipeReadHandler( Pipe *p, char *buf )
 	line = current_scriptline(running_script);
 
 	if( line && line->runstate == RUNSTATE_RUNNING ) {
-		printf("%s", buf);
+//		printf("%s", buf);
 		strexpand( &line->result, buf );
 	}
 
@@ -123,22 +129,37 @@ void pipeReadHandler( Pipe *p, char *buf )
 	forTLIST( line_input, n, lines, char* ) {
 		line_lower = strtolower(line_input);
 		if( line->runstate == RUNSTATE_RUNNING ) {
+			if( readingto ) {
+				if( str_cn_cmp(readingto->endstr, "eof") ) {
+					char *prev = (char*)scanned_vars->Get( readingto->saveas );
+					char *tgt = (char*)malloc( strlen(prev) + strlen(line_input) + 4);
+					strcpy(tgt, prev);
+					free(prev);
+					strcat(tgt, line_input);
+					scanned_vars->Del( readingto->saveas );
+					scanned_vars->Set( readingto->saveas, tgt);
+					//printf("Scan '%s' onto '%s'\n", readingto->saveas, tgt);
+				} //! else see if the endstr is in this line and stop readingto if found
+			}
 			forTLIST( scan, n2, line->scans, scriptscan* ) {
 				strptr = strstr( line_input, scan->source );
 				if( strptr ) {
-					printf("Found '%s'\n", scan->source);
+					if( scan->endstr ) //! && not found in string
+						readingto = scan;
+					//printf("Found '%s'\n", scan->source);
 					strptr += strlen(scan->source);
-					printf("Scan '%s' to '%s'\n", scan->saveas, strptr);
-					scanned_vars->Set( scan->saveas, strptr + scan->offset );
+					//printf("Scan '%s' to '%s'\n", scan->saveas, strptr + scan->offset);
+					scanned_vars->Del( scan->saveas );
+					scanned_vars->Set( scan->saveas, strdup(strptr + scan->offset) );
 				}
 			}
 
 			forTLIST( resp, n2, line->responses, scriptresponse* ) {
 				strptr = strstr( line_input, resp->source );
 				if( strptr ) {
-					printf("Found '%s'\n", resp->source);
+					//printf("Found '%s'\n", resp->source);
 					strbuf = strPrint( resp->response );
-					printf("Responding: '%s' from '%s'\n", strbuf, resp->response);
+					//printf("Responding: '%s' from '%s'\n", strbuf, resp->response);
 					p->write( strbuf );
 					p->write( "\n" );
 				}
@@ -289,6 +310,17 @@ void pipeCmdHandler( Pipe *p )
 			p->write( "exit\n" );
 			inline_command=true;
 			p->prompt_reset = true;
+		} else if( str_cn_cmp(line->cmd, "input") == 0 ) {
+			tlist *opts = split( line->cmd+6, "=" );
+			char buf[255];
+			printf( "%s", (char*)opts->FindData(0) );
+			fgets(buf, 255, stdin);
+			strip_newline(buf);
+			scanned_vars->Del( (char*)opts->FindData(1) );
+			scanned_vars->Set( (char*)opts->FindData(1), strdup(buf) );
+			printf( "\n%s set to '%s'.\n", (char*)opts->FindData(1), buf );
+			inline_command=true;
+			p->write( "echo\n" );
 		} else if( str_cn_cmp(line->cmd, "su") == 0 ) {
 			p->support_password_block = true;
 		} else if( str_cn_cmp(line->cmd, "source ~/.bashrc") == 0 ) {
@@ -302,7 +334,7 @@ void pipeCmdHandler( Pipe *p )
 				p->write( replbuf );
 			} else {
 				rebuf = strPrint(line->cmd);
-				printf("Run command '%s':\n", rebuf);
+				//printf("Run command '%s':\n", rebuf);
 				p->write( rebuf );
 				free(rebuf);
 				p->write(" 2>&1\n");
@@ -321,19 +353,28 @@ void pipeCmdHandler( Pipe *p )
 
 int main(int ac, char *av[])
 {
-	int c;
+	int c, c0=0;
 	char buf[32];
 	scriptfile *scr;
 
 	scanned_vars = new SMap(32);
 
-	scr = loadScript("hashpass.sh");
+	c = 1;
+	if( scriptext ) {
+		scr = loadScript(scriptext);
+		c0 = 0;
+	} else if( ac > 1 ) {
+		scr = loadScriptFile(av[1]);
+		c = 2;
+		c0 = 1;
+	} else {
+		return 2;
+	}
 
-
-	for( c=1; c<ac; ++c ) {
-		sprintf(buf, "arg%d", c);
+	for( ; c<ac; ++c ) {
+		sprintf(buf, "arg%d", c-c0);
 		scanned_vars->Set( buf, av[c] );
-		printf("%s: %s\n", buf, av[c]);
+//		printf("%s: %s\n", buf, av[c]);
 	}
 
 	Pipe *target = pipeConnection();

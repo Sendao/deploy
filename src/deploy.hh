@@ -34,7 +34,7 @@ struct _scriptresponse {
 };
 
 struct _scriptfile {
-	char *source;
+	const char *source;
 	tlist *segments;
 	tnode *current;
 	int runstate;
@@ -65,12 +65,15 @@ struct _scriptline {
 
 scriptsegment *new_segment(scriptfile *sf);
 scriptline *new_scriptline(scriptfile *sf, scriptsegment *seg, const char *txt);
-scriptfile *loadScript(const char *fn);
+scriptfile *loadScriptFile(const char *fn);
+scriptfile *loadScript(const char *buf);
 
 
 scriptline * next_scriptline(scriptfile *sf );
 scriptline *current_scriptline( scriptfile *sf );
 scriptsegment * current_scriptsegment(scriptfile *sf);
+
+extern const char *scriptext;
 
 enum {
 	RUNSTATE_NONE,
