@@ -62,6 +62,25 @@ Sections may be repeated depending on their configuration and whether or not the
 
 * \#bscan (scancode)=(saveas)
  Scans to the end of the input command instead of the end of the line.
+ 
+* \#segment-repeat
+ Max repeats.
+ 
+* \#chain
+
+* \#line-repeat
+
+
+## Special commands
+
+* source ~/.bashrc
+ Reopen the shell pipe. The deploy wrapper will exit the current shell and start a new one.
+
+* input (query)=(varname)
+ Allow for user input.
+
+* cd (path)
+ Goes to the given directory, creating it if necessary.
 
 ## Variables
 
