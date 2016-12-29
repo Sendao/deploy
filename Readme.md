@@ -54,13 +54,13 @@ Sections may be repeated depending on their configuration and whether or not the
 
 ## Directives
 
-* #response <scancode>=<responsetext>
+* \#response (scancode)=(responsetext)
  If 'scancode' is detected in the application output, 'responsetext' is sent as a response to its input.
 
-* #scan <scancode>=<saveas>
+* \#scan (scancode)=(saveas)
  When 'scancode' is seen, the text immediately after it to the end of the line is saved in 'saveas' variable.
 
-* #bscan <scancode>=<saveas>
+* \#bscan (scancode)=(saveas)
  Scans to the end of the input command instead of the end of the line.
 
 ## Variables
