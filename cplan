@@ -1,0 +1,26 @@
+
+Done:
+x Add delay timer to Pipe::select()
+x Other operations to get Pipe() up to date 
+x Modify Pipe() to support commandline detection and support bash shell open
+x Basic structure: Deploy command, Pipe&Shell object, libsendao library
+x Prompt detection
+x Validate commands (echo $?==0)
+x Wrap commands ("[cmd] 2>&1\n")
+x Local testing
+x cyclic pipe read buffer
+/ Deploy testing
+x prompt/pwd: support cd/su
+x support 'source ~/.bashrc': restart pipe
+x support 'su exit': exit piped shell
+
+Todo:
+- Store logfiles (currently just echo'd)
+
+Crash monitor:
+- multiple processes
+- auto kill/restart loop
+- crash detectors (process/log)
+- output formatting
+- slack shell script
+- reboot control

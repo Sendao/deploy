@@ -1,0 +1,9 @@
+#!/bin/bash
+
+rm -rf debug
+mkdir debug
+cd debug
+echo "rm -rf [^r]* ; cmake -DCMAKE_BUILD_TYPE=debug .." > remake
+chmod 777 remake
+cmake -DCMAKE_BUILD_TYPE=debug ..
+
